@@ -30,18 +30,50 @@ jobs:
 
       - name: Install NDK and CMake
         run: |
-          NDK_VERSION=$(grep -oP 'ndkVersion = "\K[^"]+' Source/Android/app/build.gradle.kts)
-          echo "Installing NDK $NDK_VERSION"
-          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null
-          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
-            "ndk;$NDK_VERSION" "cmake;3.31.6" "platforms;android-37" "build-tools;35.0.0"
+          set -uo pipefail
+          SDK="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+          echo "SDK root: $SDK"
+          ls -1 "$SDK/cmdline-tools" || true
+
+          # Runner images ship versioned cmdline-tools dirs, not always a "latest" symlink.
+          SDKMANAGER=$(ls -d "$SDK"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | sort -V | tail -n1)
+          if [ -z "$SDKMANAGER" ]; then
+            SDKMANAGER=$(command -v sdkmanager || true)
+          fi
+          if [ -z "$SDKMANAGER" ]; then
+            echo "::error::Could not find sdkmanager under $SDK"
+            exit 1
+          fi
+          echo "Using $SDKMANAGER"
+
+          yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
+
+          PINNED=$(grep -oP 'dolphinNdkVersion.*\?: "\K[^"]+' Source/Android/app/build.gradle.kts)
+          CMAKE=$("$SDKMANAGER" --list 2>/dev/null | grep -oP '^\s+cmake;\K[0-9][0-9.]*' \
+            | sort -V | tail -n1)
+          echo "Pinned NDK: $PINNED / newest CMake: $CMAKE"
+
+          "$SDKMANAGER" --install "platforms;android-37" "build-tools;35.0.0" "cmake;$CMAKE"
+
+          # The pinned NDK may be newer than anything the runner can fetch; fall back to the
+          # newest one that is actually available and tell Gradle to use it.
+          if ! "$SDKMANAGER" --install "ndk;$PINNED"; then
+            AVAILABLE=$("$SDKMANAGER" --list 2>/dev/null | grep -oP '^\s+ndk;\K[0-9][0-9.]*' \
+              | sort -V | tail -n1)
+            echo "NDK $PINNED unavailable, falling back to $AVAILABLE"
+            "$SDKMANAGER" --install "ndk;$AVAILABLE"
+            echo "NDK_OVERRIDE=$AVAILABLE" >> "$GITHUB_ENV"
+          fi
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
       - name: Build debug APK (arm64-v8a)
         working-directory: Source/Android
-        run: ./gradlew --no-daemon -PdolphinAbiFilters=arm64-v8a assembleDebug
+        run: |
+          ./gradlew --no-daemon -PdolphinAbiFilters=arm64-v8a \
+            ${NDK_OVERRIDE:+-PdolphinNdkVersion=$NDK_OVERRIDE} \
+            assembleDebug
 
       - name: Name the APK
         id: apk
@@ -68,3 +100,11 @@ jobs:
             --title "Fast-forward test build (${GITHUB_SHA::8})" \
             --notes "Debug build of the Android fast-forward branch, arm64-v8a only. Installs alongside official Dolphin (application id suffix .debug)." \
             --prerelease
+
+      # Post-steps bury the real error in the job log tail, so restate it at the end.
+      - name: Diagnostics on failure
+        if: failure()
+        run: |
+          echo "===== SDK packages installed ====="
+          ls -1 "${ANDROID_SDK_ROOT:-$ANDROID_HOME}/ndk" 2>/dev/null || echo "no ndk dir"
+          ls -1 "${ANDROID_SDK_ROOT:-$ANDROID_HOME}/cmake" 2>/dev/null || echo "no cmake dir"

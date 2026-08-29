@@ -13,10 +13,13 @@ val dolphinAbiFilters: List<String> = (findProperty("dolphinAbiFilters") as Stri
     ?.filter { it.isNotEmpty() }
     ?: listOf("arm64-v8a", "x86_64") //, "armeabi-v7a", "x86"
 
+// Overridable so CI can fall back to whatever NDK the runner can actually install.
+val dolphinNdkVersion: String = (findProperty("dolphinNdkVersion") as String?) ?: "30.0.15729638"
+
 @Suppress("UnstableApiUsage")
 android {
     compileSdk = 37
-    ndkVersion = "30.0.15729638"
+    ndkVersion = dolphinNdkVersion
 
     buildFeatures {
         compose = true
