@@ -1,0 +1,70 @@
+# Builds the Android APK for this personal fast-forward fork and publishes it as a
+# release asset, so there's a plain download link for it.
+name: Android APK
+
+on:
+  push:
+    branches:
+      - claude/dolphin-android-speed-toggle-m5ybv8
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Install NDK and CMake
+        run: |
+          NDK_VERSION=$(grep -oP 'ndkVersion = "\K[^"]+' Source/Android/app/build.gradle.kts)
+          echo "Installing NDK $NDK_VERSION"
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
+            "ndk;$NDK_VERSION" "cmake;3.31.6" "platforms;android-37" "build-tools;35.0.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build debug APK (arm64-v8a)
+        working-directory: Source/Android
+        run: ./gradlew --no-daemon -PdolphinAbiFilters=arm64-v8a assembleDebug
+
+      - name: Name the APK
+        id: apk
+        run: |
+          SRC=Source/Android/app/build/outputs/apk/debug/app-debug.apk
+          DEST="dolphin-fastforward-arm64-${GITHUB_SHA::8}.apk"
+          cp "$SRC" "$DEST"
+          echo "path=$DEST" >> "$GITHUB_OUTPUT"
+          echo "tag=android-fastforward-${GITHUB_SHA::8}" >> "$GITHUB_OUTPUT"
+
+      # Uploaded twice on purpose: the artifact is handy from the run page, the release
+      # asset is a direct link that doesn't require being signed in.
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dolphin-fastforward-arm64
+          path: ${{ steps.apk.outputs.path }}
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ steps.apk.outputs.tag }}" "${{ steps.apk.outputs.path }}" \
+            --title "Fast-forward test build (${GITHUB_SHA::8})" \
+            --notes "Debug build of the Android fast-forward branch, arm64-v8a only. Installs alongside official Dolphin (application id suffix .debug)." \
+            --prerelease

@@ -5,6 +5,14 @@ plugins {
     alias(libs.plugins.androidx.baselineprofile)
 }
 
+// Overridable so CI (and local device-only builds) can cut build time by building a single
+// ABI: -PdolphinAbiFilters=arm64-v8a
+val dolphinAbiFilters: List<String> = (findProperty("dolphinAbiFilters") as String?)
+    ?.split(',')
+    ?.map { it.trim() }
+    ?.filter { it.isNotEmpty() }
+    ?: listOf("arm64-v8a", "x86_64") //, "armeabi-v7a", "x86"
+
 @Suppress("UnstableApiUsage")
 android {
     compileSdk = 37
@@ -105,7 +113,7 @@ android {
                     "-DCMAKE_BUILD_TYPE=RelWithDebInfo"
                     // , "-DENABLE_GENERIC=ON"
                 )
-                abiFilters("arm64-v8a", "x86_64") //, "armeabi-v7a", "x86"
+                abiFilters(*dolphinAbiFilters.toTypedArray())
 
                 // Uncomment the line below if you don't want to build the C++ unit tests
                 //targets("main", "hook_impl", "main_hook", "gsl_alloc_hook", "file_redirect_hook")
