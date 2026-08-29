@@ -14,7 +14,16 @@ enum class FloatSetting(
     MAIN_VI_OVERCLOCK(Settings.FILE_DOLPHIN, Settings.SECTION_INI_CORE, "VIOverclock", 1.0f),
     GFX_CC_GAME_GAMMA(Settings.FILE_GFX, Settings.SECTION_GFX_COLOR_CORRECTION, "GameGamma", 2.35f),
     GFX_STEREO_DEPTH(Settings.FILE_GFX, Settings.SECTION_STEREOSCOPY, "StereoDepth", 20.0f),
-    GFX_STEREO_CONVERGENCE(Settings.FILE_GFX, Settings.SECTION_STEREOSCOPY, "StereoConvergence", 20.0f);
+    GFX_STEREO_CONVERGENCE(Settings.FILE_GFX, Settings.SECTION_STEREOSCOPY, "StereoConvergence", 20.0f),
+
+    // Android-only. The emulation speed to use while fast-forward is engaged.
+    // 0.0 means unlimited, like MAIN_EMULATION_SPEED.
+    MAIN_FAST_FORWARD_SPEED(
+        Settings.FILE_DOLPHIN,
+        Settings.SECTION_INI_ANDROID,
+        "FastForwardSpeed",
+        2.0f
+    );
 
     override val isOverridden: Boolean
         get() = NativeConfig.isOverridden(file, section, key)
@@ -42,4 +51,9 @@ enum class FloatSetting(
     fun setFloat(layer: Int, newValue: Float) {
         NativeConfig.setFloat(layer, file, section, key, newValue)
     }
+
+    fun getFloat(layer: Int): Float =
+        NativeConfig.getFloat(layer, file, section, key, defaultValue)
+
+    fun delete(layer: Int): Boolean = NativeConfig.deleteKey(layer, file, section, key)
 }

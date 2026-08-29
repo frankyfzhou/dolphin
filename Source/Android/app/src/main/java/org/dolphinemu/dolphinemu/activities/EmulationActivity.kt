@@ -63,6 +63,7 @@ import org.dolphinemu.dolphinemu.ui.main.MainPresenter
 import org.dolphinemu.dolphinemu.ui.main.ThemeProvider
 import org.dolphinemu.dolphinemu.utils.AfterDirectoryInitializationRunner
 import org.dolphinemu.dolphinemu.utils.DirectoryInitialization
+import org.dolphinemu.dolphinemu.utils.FastForward
 import org.dolphinemu.dolphinemu.utils.FileBrowserHelper
 import org.dolphinemu.dolphinemu.utils.RateLimiter
 import org.dolphinemu.dolphinemu.utils.ThemeHelper
@@ -323,6 +324,8 @@ class EmulationActivity : AppCompatActivity(), ThemeProvider {
 
     override fun onStop() {
         super.onStop()
+        // Emulation is no longer in the foreground, so don't leave fast-forward engaged.
+        FastForward.reset()
         settings.saveSettings()
     }
 
@@ -347,6 +350,8 @@ class EmulationActivity : AppCompatActivity(), ThemeProvider {
 
     override fun onDestroy() {
         super.onDestroy()
+        // The config layers outlive this activity, so make sure the override doesn't.
+        FastForward.reset()
         settings.close()
     }
 
@@ -491,6 +496,7 @@ class EmulationActivity : AppCompatActivity(), ThemeProvider {
             MENU_ACTION_CHOOSE_CONTROLLER -> chooseController()
             MENU_ACTION_REFRESH_WIIMOTES -> NativeLibrary.RefreshWiimotes()
             MENU_ACTION_PAUSE_EMULATION -> {
+                FastForward.reset()
                 hasUserPausedEmulation = true
                 NativeLibrary.PauseEmulation(false)
             }
@@ -500,9 +506,10 @@ class EmulationActivity : AppCompatActivity(), ThemeProvider {
                 NativeLibrary.UnPauseEmulation()
             }
 
+            MENU_ACTION_TOGGLE_FAST_FORWARD -> FastForward.toggle()
             MENU_ACTION_TAKE_SCREENSHOT -> NativeLibrary.SaveScreenShot()
             MENU_ACTION_QUICK_SAVE -> NativeLibrary.SaveState(9)
-            MENU_ACTION_QUICK_LOAD -> NativeLibrary.LoadState(9)
+            MENU_ACTION_QUICK_LOAD -> loadState(9)
             MENU_ACTION_SAVE_ROOT -> showSubMenu(SaveOrLoad.SAVE)
             MENU_ACTION_LOAD_ROOT -> showSubMenu(SaveOrLoad.LOAD)
             MENU_ACTION_SAVE_SLOT1 -> NativeLibrary.SaveState(0)
@@ -511,12 +518,12 @@ class EmulationActivity : AppCompatActivity(), ThemeProvider {
             MENU_ACTION_SAVE_SLOT4 -> NativeLibrary.SaveState(3)
             MENU_ACTION_SAVE_SLOT5 -> NativeLibrary.SaveState(4)
             MENU_ACTION_SAVE_SLOT6 -> NativeLibrary.SaveState(5)
-            MENU_ACTION_LOAD_SLOT1 -> NativeLibrary.LoadState(0)
-            MENU_ACTION_LOAD_SLOT2 -> NativeLibrary.LoadState(1)
-            MENU_ACTION_LOAD_SLOT3 -> NativeLibrary.LoadState(2)
-            MENU_ACTION_LOAD_SLOT4 -> NativeLibrary.LoadState(3)
-            MENU_ACTION_LOAD_SLOT5 -> NativeLibrary.LoadState(4)
-            MENU_ACTION_LOAD_SLOT6 -> NativeLibrary.LoadState(5)
+            MENU_ACTION_LOAD_SLOT1 -> loadState(0)
+            MENU_ACTION_LOAD_SLOT2 -> loadState(1)
+            MENU_ACTION_LOAD_SLOT3 -> loadState(2)
+            MENU_ACTION_LOAD_SLOT4 -> loadState(3)
+            MENU_ACTION_LOAD_SLOT5 -> loadState(4)
+            MENU_ACTION_LOAD_SLOT6 -> loadState(5)
             MENU_ACTION_CHANGE_DISC -> requestChangeDisc.launch("*/*")
 
             MENU_SET_IR_MODE -> setIRMode()
@@ -535,6 +542,15 @@ class EmulationActivity : AppCompatActivity(), ThemeProvider {
     private fun toggleRecenter(state: Boolean) {
         BooleanSetting.MAIN_IR_ALWAYS_RECENTER.setBoolean(settings, state)
         emulationFragment?.refreshOverlayPointer()
+    }
+
+    /**
+     * Loading a save state can change how fast the game runs from under the user, so disengage
+     * fast-forward first rather than leaving it latched across the load.
+     */
+    private fun loadState(slot: Int) {
+        FastForward.reset()
+        NativeLibrary.LoadState(slot)
     }
 
     private fun editControlsPlacement() {
@@ -1084,6 +1100,7 @@ class EmulationActivity : AppCompatActivity(), ThemeProvider {
         const val MENU_ACTION_SKYLANDERS = 36
         const val MENU_ACTION_INFINITY_BASE = 37
         const val MENU_ACTION_LATCHING_CONTROLS = 38
+        const val MENU_ACTION_TOGGLE_FAST_FORWARD = 39
 
         init {
             buttonsActionsMap.apply {

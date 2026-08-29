@@ -53,6 +53,11 @@
                 android:visibility="gone" />
 
             <Button
+                android:id="@+id/menu_toggle_fast_forward"
+                style="@style/InGameMenuOption"
+                android:text="@string/emulation_fast_forward_enable" />
+
+            <Button
                 android:id="@+id/menu_take_screenshot"
                 style="@style/InGameMenuOption"
                 android:text="@string/emulation_screenshot" />

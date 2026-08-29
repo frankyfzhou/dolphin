@@ -22,6 +22,7 @@ import org.dolphinemu.dolphinemu.databinding.FragmentIngameMenuBinding
 import org.dolphinemu.dolphinemu.features.settings.model.AchievementModel
 import org.dolphinemu.dolphinemu.features.settings.model.BooleanSetting
 import org.dolphinemu.dolphinemu.features.settings.model.IntSetting
+import org.dolphinemu.dolphinemu.utils.FastForward
 import org.dolphinemu.dolphinemu.utils.InsetsHelper
 import org.dolphinemu.dolphinemu.utils.ThemeHelper
 
@@ -51,6 +52,7 @@ class MenuFragment : Fragment(), View.OnClickListener {
 
         setInsets()
         updatePauseUnpauseVisibility()
+        updateFastForwardText()
 
         if (!requireActivity().packageManager.hasSystemFeature(PackageManager.FEATURE_TOUCHSCREEN)) {
             binding.menuOverlayControls.visibility = View.GONE
@@ -114,6 +116,7 @@ class MenuFragment : Fragment(), View.OnClickListener {
 
     override fun onResume() {
         super.onResume()
+        updateFastForwardText()
         val savestatesEnabled = BooleanSetting.MAIN_ENABLE_SAVESTATES.boolean
         val hardcoreEnabled = AchievementModel.isHardcoreModeActive()
         val savestateVisibility = if (savestatesEnabled) View.VISIBLE else View.GONE
@@ -131,6 +134,13 @@ class MenuFragment : Fragment(), View.OnClickListener {
         super.onDestroyView()
         NativeLibrary.SetObscuredPixelsLeft(cutInset)
         _binding = null
+    }
+
+    private fun updateFastForwardText() {
+        binding.menuToggleFastForward.setText(
+            if (FastForward.isEnabled) R.string.emulation_fast_forward_disable
+            else R.string.emulation_fast_forward_enable
+        )
     }
 
     private fun updatePauseUnpauseVisibility() {
@@ -156,6 +166,12 @@ class MenuFragment : Fragment(), View.OnClickListener {
         ) {
             updatePauseUnpauseVisibility()
         }
+
+        if (action == EmulationActivity.MENU_ACTION_TOGGLE_FAST_FORWARD ||
+            action == EmulationActivity.MENU_ACTION_PAUSE_EMULATION
+        ) {
+            updateFastForwardText()
+        }
     }
 
     companion object {
@@ -171,6 +187,10 @@ class MenuFragment : Fragment(), View.OnClickListener {
             buttonsActionsMap.append(
                 R.id.menu_unpause_emulation,
                 EmulationActivity.MENU_ACTION_UNPAUSE_EMULATION
+            )
+            buttonsActionsMap.append(
+                R.id.menu_toggle_fast_forward,
+                EmulationActivity.MENU_ACTION_TOGGLE_FAST_FORWARD
             )
             buttonsActionsMap.append(
                 R.id.menu_take_screenshot,
