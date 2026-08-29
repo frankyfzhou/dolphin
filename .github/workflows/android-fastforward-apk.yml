@@ -42,20 +42,18 @@ jobs:
           {
             PINNED=$(grep -oP 'dolphinNdkVersion.*\?: "\K[^"]+' Source/Android/app/build.gradle.kts)
             echo "Pinned NDK: $PINNED"
-
             sdkmanager --list_installed || true
 
+            # Deliberately not installing platforms/build-tools here: compileSdk 37 may not be
+            # published to sdkmanager yet, and a missing package would hard-fail the step.
+            # AGP downloads whatever platform it needs on its own.
             CMAKE=$(sdkmanager --list 2>/dev/null | grep -oP '^\s*cmake;\K[0-9][0-9.]*' \
               | sort -V | tail -n1)
             echo "Newest available CMake: ${CMAKE:-<none found>}"
-
-            sdkmanager --install "platforms;android-37" "build-tools;35.0.0" || exit 1
             if [ -n "$CMAKE" ]; then
-              sdkmanager --install "cmake;$CMAKE" || exit 1
+              sdkmanager --install "cmake;$CMAKE" || echo "CMake install failed; letting AGP resolve it"
             fi
 
-            # The pinned NDK may be newer than anything the runner can fetch; fall back to the
-            # newest one that is actually available and tell Gradle to use it.
             if ! sdkmanager --install "ndk;$PINNED"; then
               AVAILABLE=$(sdkmanager --list 2>/dev/null | grep -oP '^\s*ndk;\K[0-9][0-9.]*' \
                 | sort -V | tail -n1)
@@ -105,21 +103,22 @@ jobs:
             --notes "Debug build of the Android fast-forward branch, arm64-v8a only. Installs alongside official Dolphin (application id suffix .debug)." \
             --prerelease
 
-      # actions/checkout's recursive-submodule cleanup floods the end of the job log, so
-      # the real error is unreadable through the API's log tail. Publish it as an issue
-      # comment instead, where it can actually be read back.
+      # Issues are disabled on forks by default, and the job log tail is buried under
+      # actions/checkout's submodule cleanup, so push the captured output to a branch
+      # where it can be read back through the contents API.
       - name: Report failure
         if: failure()
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          {
-            echo "Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-            echo
-            echo '```'
-            tail -n 120 /tmp/ci-step.log 2>/dev/null || echo "no step log captured"
-            echo '```'
-          } > /tmp/report.md
-          gh issue create --title "CI failure: ${GITHUB_SHA::8}" --body-file /tmp/report.md \
-            --label "" || gh issue create --title "CI failure: ${GITHUB_SHA::8}" \
-            --body-file /tmp/report.md
+          set -eu
+          mkdir -p /tmp/ci-logs
+          cp /tmp/ci-step.log "/tmp/ci-logs/${GITHUB_SHA::8}.log" 2>/dev/null \
+            || echo "no step log captured" > "/tmp/ci-logs/${GITHUB_SHA::8}.log"
+          cd /tmp/ci-logs
+          git init -q .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -q -m "CI log for ${GITHUB_SHA::8}"
+          git push -q --force \
+            "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" \
+            HEAD:refs/heads/ci-logs
