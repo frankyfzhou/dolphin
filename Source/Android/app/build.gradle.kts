@@ -62,6 +62,17 @@ android {
     }
 
     signingConfigs {
+        // Fixed debug keystore so every build - including each ephemeral CI runner - signs with
+        // the same identity. Without it Gradle generates a throwaway ~/.android/debug.keystore per
+        // machine and Android refuses to upgrade an install signed by a different key.
+        // This is a debug key with Android's standard public password; it can't sign for Play.
+        getByName("debug") {
+            storeFile = file("../debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+
         create("release") {
             if (project.hasProperty("keystore")) {
                 storeFile = file(project.property("keystore")!!)
