@@ -660,58 +660,53 @@ class EmulationActivity : AppCompatActivity(), ThemeProvider {
 
         val currentController = InputOverlay.configuredControllerType
 
-        if (currentController == InputOverlay.OVERLAY_GAMECUBE) {
-            val gcEnabledButtons = BooleanArray(11)
-            val gcSettingBase = "MAIN_BUTTON_TOGGLE_GC_"
+        val buttonsArray: Int
+        val settingBase: String
+        when (currentController) {
+            InputOverlay.OVERLAY_GAMECUBE -> {
+                buttonsArray = R.array.gcpadButtons
+                settingBase = "MAIN_BUTTON_TOGGLE_GC_"
+            }
 
-            for (i in gcEnabledButtons.indices) {
-                gcEnabledButtons[i] = BooleanSetting.valueOf(gcSettingBase + i).boolean
+            InputOverlay.OVERLAY_WIIMOTE_CLASSIC -> {
+                buttonsArray = R.array.classicButtons
+                settingBase = "MAIN_BUTTON_TOGGLE_CLASSIC_"
             }
-            builder.setMultiChoiceItems(
-                R.array.gcpadButtons, gcEnabledButtons
-            ) { _: DialogInterface?, indexSelected: Int, isChecked: Boolean ->
-                BooleanSetting
-                    .valueOf(gcSettingBase + indexSelected).setBoolean(settings, isChecked)
-                emulationFragment?.refreshInputOverlay()
-            }
-        } else if (currentController == InputOverlay.OVERLAY_WIIMOTE_CLASSIC) {
-            val wiiClassicEnabledButtons = BooleanArray(14)
-            val classicSettingBase = "MAIN_BUTTON_TOGGLE_CLASSIC_"
 
-            for (i in wiiClassicEnabledButtons.indices) {
-                wiiClassicEnabledButtons[i] = BooleanSetting.valueOf(classicSettingBase + i).boolean
+            InputOverlay.OVERLAY_WIIMOTE_NUNCHUK -> {
+                buttonsArray = R.array.nunchukButtons
+                settingBase = "MAIN_BUTTON_TOGGLE_WII_"
             }
-            builder.setMultiChoiceItems(
-                R.array.classicButtons, wiiClassicEnabledButtons
-            ) { _: DialogInterface?, indexSelected: Int, isChecked: Boolean ->
-                BooleanSetting.valueOf(classicSettingBase + indexSelected)
-                    .setBoolean(settings, isChecked)
-                emulationFragment?.refreshInputOverlay()
-            }
-        } else {
-            val wiiEnabledButtons = BooleanArray(11)
-            val wiiSettingBase = "MAIN_BUTTON_TOGGLE_WII_"
 
-            for (i in wiiEnabledButtons.indices) {
-                wiiEnabledButtons[i] = BooleanSetting.valueOf(wiiSettingBase + i).boolean
+            else -> {
+                buttonsArray = R.array.wiimoteButtons
+                settingBase = "MAIN_BUTTON_TOGGLE_WII_"
             }
-            if (currentController == InputOverlay.OVERLAY_WIIMOTE_NUNCHUK) {
-                builder.setMultiChoiceItems(
-                    R.array.nunchukButtons, wiiEnabledButtons
-                ) { _: DialogInterface?, indexSelected: Int, isChecked: Boolean ->
-                    BooleanSetting
-                        .valueOf(wiiSettingBase + indexSelected).setBoolean(settings, isChecked)
-                    emulationFragment?.refreshInputOverlay()
-                }
+        }
+
+        // Fast-forward is the last entry of every one of these arrays. It isn't a pad input, so
+        // it's a single setting shared by all controller types rather than one of the indexed
+        // per-controller ones.
+        val itemCount = resources.getStringArray(buttonsArray).size
+        val fastForwardIndex = itemCount - 1
+
+        val enabledButtons = BooleanArray(itemCount)
+        for (i in 0 until fastForwardIndex) {
+            enabledButtons[i] = BooleanSetting.valueOf(settingBase + i).boolean
+        }
+        enabledButtons[fastForwardIndex] =
+            BooleanSetting.MAIN_BUTTON_TOGGLE_FAST_FORWARD.boolean
+
+        builder.setMultiChoiceItems(
+            buttonsArray, enabledButtons
+        ) { _: DialogInterface?, indexSelected: Int, isChecked: Boolean ->
+            val setting = if (indexSelected == fastForwardIndex) {
+                BooleanSetting.MAIN_BUTTON_TOGGLE_FAST_FORWARD
             } else {
-                builder.setMultiChoiceItems(
-                    R.array.wiimoteButtons, wiiEnabledButtons
-                ) { _: DialogInterface?, indexSelected: Int, isChecked: Boolean ->
-                    BooleanSetting
-                        .valueOf(wiiSettingBase + indexSelected).setBoolean(settings, isChecked)
-                    emulationFragment?.refreshInputOverlay()
-                }
+                BooleanSetting.valueOf(settingBase + indexSelected)
             }
+            setting.setBoolean(settings, isChecked)
+            emulationFragment?.refreshInputOverlay()
         }
 
         builder

@@ -415,6 +415,27 @@ class SettingsFragmentPresenter(
             )
         )
         sl.add(
+            PercentSliderSetting(
+                context,
+                FloatSetting.MAIN_FAST_FORWARD_SPEED,
+                R.string.fast_forward_speed,
+                R.string.fast_forward_speed_description,
+                0f,
+                1000f,
+                "%",
+                1f,
+                false
+            )
+        )
+        sl.add(
+            SwitchSetting(
+                context,
+                BooleanSetting.MAIN_FAST_FORWARD_HOLD_MODE,
+                R.string.fast_forward_hold_mode,
+                R.string.fast_forward_hold_mode_description
+            )
+        )
+        sl.add(
             SingleChoiceSetting(
                 context,
                 IntSetting.MAIN_FALLBACK_REGION,

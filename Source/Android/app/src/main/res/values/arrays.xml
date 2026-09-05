@@ -414,6 +414,7 @@
         <item>@string/gamepad_d_pad</item>
         <item>@string/gamepad_main_stick</item>
         <item>@string/gamepad_c_stick</item>
+        <item>@string/overlay_fast_forward</item>
     </string-array>
 
     <string-array name="gcpadLatchableButtons">
@@ -436,6 +437,7 @@
         <item>-</item>
         <item>@string/gamepad_home</item>
         <item>@string/gamepad_d_pad</item>
+        <item>@string/overlay_fast_forward</item>
     </string-array>
 
     <string-array name="wiimoteLatchableButtons">
@@ -460,6 +462,7 @@
         <item>C</item>
         <item>Z</item>
         <item>@string/gamepad_nunchuk_stick</item>
+        <item>@string/overlay_fast_forward</item>
     </string-array>
 
     <string-array name="nunchukLatchableButtons">
@@ -489,6 +492,7 @@
         <item>@string/gamepad_d_pad</item>
         <item>@string/gamepad_left_stick</item>
         <item>@string/gamepad_right_stick</item>
+        <item>@string/overlay_fast_forward</item>
     </string-array>
 
     <string-array name="classicLatchableButtons">

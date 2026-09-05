@@ -288,6 +288,23 @@ enum class BooleanSetting(
         "IRAlwaysRecenter",
         false
     ),
+    // Android-only. Whether the fast-forward overlay button is shown. It isn't a pad input, so
+    // it's one setting shared by every controller type rather than one per type.
+    MAIN_BUTTON_TOGGLE_FAST_FORWARD(
+        Settings.FILE_DOLPHIN,
+        Settings.SECTION_INI_ANDROID_OVERLAY_BUTTONS,
+        "ButtonToggleFastForward",
+        true
+    ),
+
+    // Android-only. True = the fast-forward button only applies while held, false = it latches.
+    MAIN_FAST_FORWARD_HOLD_MODE(
+        Settings.FILE_DOLPHIN,
+        Settings.SECTION_INI_ANDROID,
+        "FastForwardHoldMode",
+        false
+    ),
+
     MAIN_BUTTON_TOGGLE_GC_0(
         Settings.FILE_DOLPHIN,
         Settings.SECTION_INI_ANDROID_OVERLAY_BUTTONS,

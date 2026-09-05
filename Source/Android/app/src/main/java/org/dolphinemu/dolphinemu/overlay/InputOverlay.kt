@@ -17,6 +17,7 @@ import android.view.SurfaceView
 import android.view.View
 import android.view.View.OnTouchListener
 import android.widget.Toast
+import androidx.core.content.ContextCompat
 import androidx.preference.PreferenceManager
 import org.dolphinemu.dolphinemu.DolphinApplication
 import org.dolphinemu.dolphinemu.NativeLibrary
@@ -30,6 +31,7 @@ import org.dolphinemu.dolphinemu.features.settings.model.BooleanSetting
 import org.dolphinemu.dolphinemu.features.settings.model.IntSetting
 import org.dolphinemu.dolphinemu.features.settings.model.IntSetting.Companion.getSettingForSIDevice
 import org.dolphinemu.dolphinemu.features.settings.model.IntSetting.Companion.getSettingForWiimoteSource
+import org.dolphinemu.dolphinemu.utils.FastForward
 import java.util.Arrays
 
 /**
@@ -144,6 +146,13 @@ class InputOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(contex
         var pressed = false
 
         for (button in overlayButtons) {
+            // Fast-forward isn't an emulated pad input, so it never reaches InputOverrider.
+            if (button.legacyId == FAST_FORWARD_BUTTON_ID) {
+                if (onTouchFastForward(button, event, action, pointerIndex))
+                    pressed = true
+                continue
+            }
+
             // Determine the button state to apply based on the MotionEvent action flag.
             when (action) {
                 MotionEvent.ACTION_DOWN,
@@ -304,6 +313,106 @@ class InputOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(contex
         invalidate()
 
         return true
+    }
+
+    /**
+     * Handles a touch on the fast-forward button. Returns true if this event pressed it, so the
+     * caller knows not to move the IR pointer.
+     *
+     * In hold mode fast-forward is engaged for exactly as long as the button is held. In toggle
+     * mode a press latches it until the next press.
+     */
+    private fun onTouchFastForward(
+        button: InputOverlayDrawableButton,
+        event: MotionEvent,
+        action: Int,
+        pointerIndex: Int
+    ): Boolean {
+        val holdMode = BooleanSetting.MAIN_FAST_FORWARD_HOLD_MODE.boolean
+
+        when (action) {
+            MotionEvent.ACTION_DOWN,
+            MotionEvent.ACTION_POINTER_DOWN -> {
+                if (button.bounds.contains(
+                        event.getX(pointerIndex).toInt(),
+                        event.getY(pointerIndex).toInt()
+                    )
+                ) {
+                    button.trackId = event.getPointerId(pointerIndex)
+                    if (holdMode) FastForward.setEnabled(true) else FastForward.toggle()
+                    button.setPressedState(FastForward.isEnabled)
+                    return true
+                }
+            }
+
+            MotionEvent.ACTION_UP,
+            MotionEvent.ACTION_POINTER_UP -> {
+                if (button.trackId == event.getPointerId(pointerIndex)) {
+                    if (holdMode) FastForward.setEnabled(false)
+                    button.setPressedState(FastForward.isEnabled)
+                    button.trackId = -1
+                }
+            }
+        }
+        return false
+    }
+
+    private fun addFastForwardOverlayControl(orientation: String) {
+        ensureFastForwardDefaultPosition(orientation)
+
+        val button = initializeOverlayButton(
+            context,
+            R.drawable.overlay_fast_forward,
+            R.drawable.overlay_fast_forward_pressed,
+            FAST_FORWARD_BUTTON_ID,
+            -1,
+            orientation,
+            false
+        )
+        // The overlay is rebuilt on rotation, resize and resume, so pick up whatever state
+        // fast-forward is actually in rather than assuming it's off.
+        button.setPressedState(FastForward.isEnabled)
+        overlayButtons.add(button)
+    }
+
+    /**
+     * The default position tables only run once (guarded by OverlayInitV3), so an existing
+     * install would place a newly added button at 0,0. Seed it on first use instead.
+     */
+    private fun ensureFastForwardDefaultPosition(orientation: String) {
+        val xKey = getXKey(FAST_FORWARD_BUTTON_ID, controllerType, orientation)
+        if (preferences.contains(xKey))
+            return
+
+        val portrait = orientation != ""
+        val defaultX = resources.getInteger(
+            if (portrait) R.integer.FAST_FORWARD_PORTRAIT_X else R.integer.FAST_FORWARD_X
+        )
+        val defaultY = resources.getInteger(
+            if (portrait) R.integer.FAST_FORWARD_PORTRAIT_Y else R.integer.FAST_FORWARD_Y
+        )
+
+        val dm = resources.displayMetrics
+        var maxX = dm.heightPixels.toFloat()
+        var maxY = dm.widthPixels.toFloat()
+        if (maxY > maxX) {
+            val tmp = maxX
+            maxX = maxY
+            maxY = tmp
+        }
+        if (portrait) {
+            val tmp = maxX
+            maxX = maxY
+            maxY = tmp
+        }
+
+        preferences.edit()
+            .putFloat(xKey, defaultX.toFloat() / 1000 * maxX)
+            .putFloat(
+                getYKey(FAST_FORWARD_BUTTON_ID, controllerType, orientation),
+                defaultY.toFloat() / 1000 * maxY
+            )
+            .apply()
     }
 
     fun onTouchWhileEditing(event: MotionEvent): Boolean {
@@ -1047,6 +1156,12 @@ class InputOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(contex
 
                 OVERLAY_NONE -> {}
             }
+
+            if (controllerType != OVERLAY_NONE &&
+                BooleanSetting.MAIN_BUTTON_TOGGLE_FAST_FORWARD.boolean
+            ) {
+                addFastForwardOverlayControl(orientation)
+            }
         }
 
         isFirstRun = false
@@ -1171,10 +1286,8 @@ class InputOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(contex
         scale /= 100f
 
         // Initialize the InputOverlayDrawableButton.
-        val defaultStateBitmap =
-            resizeBitmap(context, BitmapFactory.decodeResource(resources, defaultResId), scale)
-        val pressedStateBitmap =
-            resizeBitmap(context, BitmapFactory.decodeResource(resources, pressedResId), scale)
+        val defaultStateBitmap = resizeBitmap(context, getBitmap(context, defaultResId), scale)
+        val pressedStateBitmap = resizeBitmap(context, getBitmap(context, pressedResId), scale)
 
         val overlayDrawable = InputOverlayDrawableButton(
             resources,
@@ -2283,6 +2396,15 @@ class InputOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(contex
         const val OVERLAY_WIIMOTE_NUNCHUK = 3
         const val OVERLAY_WIIMOTE_CLASSIC = 4
         const val OVERLAY_NONE = 5
+
+        /**
+         * Synthetic id for the fast-forward button. It is deliberately outside every ButtonType
+         * range (the highest real one is WIIMOTE_GYRO_YAW_RIGHT = 636, and the ranges are handed
+         * out in blocks of 100 up to 600) so it can never collide with an emulated pad input,
+         * while still working as a SharedPreferences key for position and as a scale selector.
+         * Fast-forward never reaches ButtonManager or InputOverrider; it's intercepted in Kotlin.
+         */
+        const val FAST_FORWARD_BUTTON_ID = 1000
         private const val DISABLED_GAMECUBE_CONTROLLER = 0
         private const val EMULATED_GAMECUBE_CONTROLLER = 6
         private const val EMULATED_AM_BASEBOARD = 11
@@ -2312,6 +2434,26 @@ class InputOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(contex
          * @param scale   The scale factor for the bitmap.
          * @return The scaled [Bitmap]
          */
+        /**
+         * Decodes a drawable resource into a [Bitmap]. Unlike BitmapFactory.decodeResource this
+         * also works for vector drawables, which return null there.
+         */
+        fun getBitmap(context: Context, resId: Int): Bitmap {
+            val drawable = ContextCompat.getDrawable(context, resId)!!
+            if (drawable is android.graphics.drawable.BitmapDrawable)
+                return drawable.bitmap
+
+            val bitmap = Bitmap.createBitmap(
+                drawable.intrinsicWidth,
+                drawable.intrinsicHeight,
+                Bitmap.Config.ARGB_8888
+            )
+            val canvas = Canvas(bitmap)
+            drawable.setBounds(0, 0, canvas.width, canvas.height)
+            drawable.draw(canvas)
+            return bitmap
+        }
+
         fun resizeBitmap(context: Context, bitmap: Bitmap, scale: Float): Bitmap {
             // Determine the button size based on the smaller screen dimension.
             // This makes sure the buttons are the same size in both portrait and landscape.
