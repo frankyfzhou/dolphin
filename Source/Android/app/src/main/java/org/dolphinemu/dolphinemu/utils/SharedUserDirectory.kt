@@ -54,7 +54,13 @@ object SharedUserDirectory {
         // directory lives, and a failure to resolve it must degrade to the app-private folder
         // rather than take the app down.
         return try {
-            if (!isEnabled(context) || !PermissionsHandler.hasAllFilesAccess())
+            // Legacy external storage (targetSdk below 30) reaches the whole volume through
+            // WRITE_EXTERNAL_STORAGE and does so without the scoped-storage indirection, which
+            // is how MMJR2-VBI keeps full speed. All files access is the fallback for when this
+            // is ever built against a modern target again.
+            if (!isEnabled(context))
+                return null
+            if (!PermissionsHandler.hasWriteAccess(context) && !PermissionsHandler.hasAllFilesAccess())
                 return null
 
             val name = getFolderName(context)
@@ -74,7 +80,9 @@ object SharedUserDirectory {
      * it possible, which is the case worth prompting about.
      */
     fun isWaitingForPermission(context: Context): Boolean = try {
-        isEnabled(context) && !PermissionsHandler.hasAllFilesAccess()
+        isEnabled(context) &&
+                !PermissionsHandler.hasWriteAccess(context) &&
+                !PermissionsHandler.hasAllFilesAccess()
     } catch (e: Exception) {
         Log.error("[SharedUserDirectory] Could not check permission state: $e")
         false

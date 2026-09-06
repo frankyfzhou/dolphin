@@ -59,6 +59,14 @@ object PermissionsHandler {
      */
     @JvmStatic
     fun requestAllFilesAccess(activity: Activity) {
+        // On a legacy-storage target the ordinary runtime permission grants the whole volume,
+        // and there is no All files access screen to send the user to.
+        if (isExternalStorageLegacy()) {
+            if (activity is FragmentActivity)
+                requestWritePermission(activity)
+            return
+        }
+
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R)
             return
 

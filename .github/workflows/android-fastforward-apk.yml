@@ -6,6 +6,7 @@ on:
   push:
     branches:
       - claude/dolphin-android-speed-toggle-m5ybv8
+      - legacy-storage
   workflow_dispatch:
 
 permissions:

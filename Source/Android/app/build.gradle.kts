@@ -49,7 +49,10 @@ android {
     defaultConfig {
         applicationId = "org.dolphinemu.dolphinemu"
         minSdk = 24
-        targetSdk = 37
+        // Legacy external storage, which is what lets the user directory live in a real folder
+        // on internal storage at full speed, only applies below SDK 30. This is exactly how
+        // Dolphin MMJR2-VBI does it. compileSdk stays modern; only the target changes.
+        targetSdk = 29
 
         versionCode = getBuildVersionCode()
 
