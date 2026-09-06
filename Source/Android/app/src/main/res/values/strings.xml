@@ -629,6 +629,8 @@ It can efficiently compress both junk data and encrypted Wii data.
     <string name="unpause_emulation">Unpause Emulation</string>
     <string name="emulation_screenshot">Take Screenshot</string>
     <string name="overlay_fast_forward">Fast-Forward</string>
+    <string name="fast_forward_osd_on">FF On</string>
+    <string name="fast_forward_osd_off">FF Off</string>
     <string name="fast_forward_speed">Fast-Forward Speed</string>
     <string name="fast_forward_speed_description">Speed to use while fast-forward is engaged. 0% is unlimited.</string>
     <string name="fast_forward_hold_mode">Fast-Forward Button Holds</string>

@@ -260,6 +260,12 @@ Java_org_dolphinemu_dolphinemu_NativeLibrary_SetThrottlerTempDisabled(JNIEnv*, j
   Core::SetIsThrottlerTempDisabled(disable != JNI_FALSE);
 }
 
+JNIEXPORT void JNICALL Java_org_dolphinemu_dolphinemu_NativeLibrary_DisplayOSDMessage(
+    JNIEnv* env, jclass, jstring text, jint duration_ms)
+{
+  OSD::AddMessage(GetJString(env, text), static_cast<u32>(duration_ms));
+}
+
 JNIEXPORT void JNICALL Java_org_dolphinemu_dolphinemu_NativeLibrary_StopEmulation(JNIEnv*, jclass)
 {
   Core::Stop(Core::System::GetInstance());

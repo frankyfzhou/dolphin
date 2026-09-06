@@ -376,6 +376,12 @@ object NativeLibrary {
      */
     external fun SetThrottlerTempDisabled(disable: Boolean)
 
+    /**
+     * Shows a message on the emulation on-screen display, the same overlay the desktop build uses
+     * for messages like "Speed Limit: 200%".
+     */
+    external fun DisplayOSDMessage(text: String, durationMs: Int)
+
     external fun StopEmulation()
 
   /**

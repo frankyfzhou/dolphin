@@ -2,7 +2,9 @@
 
 package org.dolphinemu.dolphinemu.utils
 
+import org.dolphinemu.dolphinemu.DolphinApplication
 import org.dolphinemu.dolphinemu.NativeLibrary
+import org.dolphinemu.dolphinemu.R
 import org.dolphinemu.dolphinemu.features.settings.model.FloatSetting
 import org.dolphinemu.dolphinemu.features.settings.model.NativeConfig
 
@@ -56,7 +58,24 @@ object FastForward {
             if (currentValue == FloatSetting.MAIN_FAST_FORWARD_SPEED.float)
                 FloatSetting.MAIN_EMULATION_SPEED.delete(NativeConfig.LAYER_CURRENT)
         }
+
+        showOsdMessage(enabled)
     }
+
+    /**
+     * Announces the new state on the emulation OSD. Uses Dolphin's own on-screen display rather
+     * than a Toast so it renders over the game, doesn't outlive the state change, and can't queue
+     * up behind other Toasts.
+     */
+    private fun showOsdMessage(enabled: Boolean) {
+        val context = DolphinApplication.getAppContext()
+        val text = context.getString(
+            if (enabled) R.string.fast_forward_osd_on else R.string.fast_forward_osd_off
+        )
+        NativeLibrary.DisplayOSDMessage(text, OSD_DURATION_MS)
+    }
+
+    private const val OSD_DURATION_MS = 1000
 
     @Synchronized
     fun toggle(): Boolean {

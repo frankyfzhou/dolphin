@@ -100,6 +100,21 @@ jobs:
             --notes "Debug build of the Android fast-forward branch, arm64-v8a only. Installs alongside official Dolphin (application id suffix .debug)." \
             --prerelease
 
+      # Each push publishes a build, so keep only the few most recent and delete the rest
+      # (with their tags) instead of accumulating a release per commit.
+      - name: Prune old builds
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release list --limit 100 --json tagName,publishedAt --jq '
+            [.[] | select(.tagName | startswith("android-fastforward-"))]
+            | sort_by(.publishedAt) | reverse | .[3:] | .[].tagName' \
+          | while read -r tag; do
+              [ -n "$tag" ] || continue
+              echo "Deleting old release $tag"
+              gh release delete "$tag" --yes --cleanup-tag || true
+            done
+
       # Issues are disabled on forks by default, and the job log tail is buried under
       # actions/checkout's submodule cleanup, so push the captured output to a branch
       # where it can be read back through the contents API.
