@@ -102,48 +102,56 @@ class MainActivity : AppCompatActivity(), MainView, OnRefreshListener, ThemeProv
      * been granted. There is no runtime permission dialog for it, so without this the setting
      * would silently do nothing.
      */
-    private fun maybeRequestAllFilesAccess() = runCatching {
-        if (allFilesAccessPromptShown || !SharedUserDirectory.isWaitingForPermission(this))
-            return
+    private fun maybeRequestAllFilesAccess() {
+        try {
+            if (allFilesAccessPromptShown || !SharedUserDirectory.isWaitingForPermission(this))
+                return
 
-        allFilesAccessPromptShown = true
+            allFilesAccessPromptShown = true
 
-        MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.shared_user_directory_permission_title)
-            .setMessage(
-                getString(
-                    R.string.shared_user_directory_permission_message,
-                    SharedUserDirectory.getFolderName(this)
+            MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.shared_user_directory_permission_title)
+                .setMessage(
+                    getString(
+                        R.string.shared_user_directory_permission_message,
+                        SharedUserDirectory.getFolderName(this)
+                    )
                 )
-            )
-            .setPositiveButton(R.string.grant_permission) { _, _ ->
-                PermissionsHandler.requestAllFilesAccess(this)
-            }
-            .setNegativeButton(R.string.later, null)
-            .show()
-    }.onFailure { Log.error("[MainActivity] All files access prompt failed: $it") }
+                .setPositiveButton(R.string.grant_permission) { _, _ ->
+                    PermissionsHandler.requestAllFilesAccess(this)
+                }
+                .setNegativeButton(R.string.later, null)
+                .show()
+        } catch (e: Exception) {
+            Log.error("[MainActivity] All files access prompt failed: $e")
+        }
+    }
 
     /**
      * The user directory is handed to native code once during startup, so granting the permission
      * while the app is already running can't move it. Rather than silently ignoring the change,
      * say what's needed.
      */
-    private fun maybeAskForRestart() = runCatching {
-        if (restartPromptShown || !DirectoryInitialization.areDolphinDirectoriesReady())
-            return
+    private fun maybeAskForRestart() {
+        try {
+            if (restartPromptShown || !DirectoryInitialization.areDolphinDirectoriesReady())
+                return
 
-        val shared = SharedUserDirectory.getPath(this) ?: return
-        if (DirectoryInitialization.getUserDirectory() == shared.absolutePath)
-            return
+            val shared = SharedUserDirectory.getPath(this) ?: return
+            if (DirectoryInitialization.getUserDirectory() == shared.absolutePath)
+                return
 
-        restartPromptShown = true
+            restartPromptShown = true
 
-        MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.shared_user_directory_restart_title)
-            .setMessage(R.string.shared_user_directory_restart_message)
-            .setPositiveButton(R.string.ok, null)
-            .show()
-    }.onFailure { Log.error("[MainActivity] Restart prompt failed: $it") }
+            MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.shared_user_directory_restart_title)
+                .setMessage(R.string.shared_user_directory_restart_message)
+                .setPositiveButton(R.string.ok, null)
+                .show()
+        } catch (e: Exception) {
+            Log.error("[MainActivity] Restart prompt failed: $e")
+        }
+    }
 
     override fun onResume() {
         ThemeHelper.setCorrectTheme(this)
