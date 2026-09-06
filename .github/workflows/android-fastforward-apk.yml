@@ -6,6 +6,7 @@ on:
   push:
     branches:
       - claude/dolphin-android-speed-toggle-m5ybv8
+      - perf-test
   workflow_dispatch:
 
 permissions:
