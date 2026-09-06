@@ -31,6 +31,7 @@ import org.dolphinemu.dolphinemu.utils.AfterDirectoryInitializationRunner
 import org.dolphinemu.dolphinemu.utils.DirectoryInitialization
 import org.dolphinemu.dolphinemu.utils.InsetsHelper
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import org.dolphinemu.dolphinemu.utils.Log
 import org.dolphinemu.dolphinemu.utils.PermissionsHandler
 import org.dolphinemu.dolphinemu.utils.SharedUserDirectory
 import org.dolphinemu.dolphinemu.utils.StartupHandler
@@ -101,7 +102,7 @@ class MainActivity : AppCompatActivity(), MainView, OnRefreshListener, ThemeProv
      * been granted. There is no runtime permission dialog for it, so without this the setting
      * would silently do nothing.
      */
-    private fun maybeRequestAllFilesAccess() {
+    private fun maybeRequestAllFilesAccess() = runCatching {
         if (allFilesAccessPromptShown || !SharedUserDirectory.isWaitingForPermission(this))
             return
 
@@ -120,14 +121,14 @@ class MainActivity : AppCompatActivity(), MainView, OnRefreshListener, ThemeProv
             }
             .setNegativeButton(R.string.later, null)
             .show()
-    }
+    }.onFailure { Log.error("[MainActivity] All files access prompt failed: $it") }
 
     /**
      * The user directory is handed to native code once during startup, so granting the permission
      * while the app is already running can't move it. Rather than silently ignoring the change,
      * say what's needed.
      */
-    private fun maybeAskForRestart() {
+    private fun maybeAskForRestart() = runCatching {
         if (restartPromptShown || !DirectoryInitialization.areDolphinDirectoriesReady())
             return
 
@@ -142,7 +143,7 @@ class MainActivity : AppCompatActivity(), MainView, OnRefreshListener, ThemeProv
             .setMessage(R.string.shared_user_directory_restart_message)
             .setPositiveButton(R.string.ok, null)
             .show()
-    }
+    }.onFailure { Log.error("[MainActivity] Restart prompt failed: $it") }
 
     override fun onResume() {
         ThemeHelper.setCorrectTheme(this)

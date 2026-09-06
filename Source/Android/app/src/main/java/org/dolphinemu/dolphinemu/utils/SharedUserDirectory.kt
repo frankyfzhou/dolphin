@@ -43,21 +43,33 @@ object SharedUserDirectory {
      * The shared user directory to use, or null if it isn't configured or isn't usable right now.
      */
     fun getPath(): File? {
-        if (!isEnabled || !PermissionsHandler.hasAllFilesAccess())
-            return null
+        // Nothing here may throw: this runs on the startup path that decides where the user
+        // directory lives, and a failure to resolve it must degrade to the app-private folder
+        // rather than take the app down.
+        return try {
+            if (!isEnabled || !PermissionsHandler.hasAllFilesAccess())
+                return null
 
-        val name = folderName
-        if (name.isEmpty() || name.contains('/'))
-            return null
+            val name = folderName
+            if (name.isEmpty() || name.contains('/'))
+                return null
 
-        val externalPath = Environment.getExternalStorageDirectory() ?: return null
-        return File(externalPath, name)
+            val externalPath = Environment.getExternalStorageDirectory() ?: return null
+            File(externalPath, name)
+        } catch (e: Exception) {
+            Log.error("[SharedUserDirectory] Could not resolve shared user directory: $e")
+            null
+        }
     }
 
     /**
      * True when the user wants the shared directory but hasn't granted the permission that makes
      * it possible, which is the case worth prompting about.
      */
-    fun isWaitingForPermission(context: Context): Boolean =
+    fun isWaitingForPermission(context: Context): Boolean = try {
         isEnabled && !PermissionsHandler.hasAllFilesAccess()
+    } catch (e: Exception) {
+        Log.error("[SharedUserDirectory] Could not check permission state: $e")
+        false
+    }
 }
