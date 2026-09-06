@@ -113,7 +113,7 @@ class MainActivity : AppCompatActivity(), MainView, OnRefreshListener, ThemeProv
             .setMessage(
                 getString(
                     R.string.shared_user_directory_permission_message,
-                    SharedUserDirectory.folderName
+                    SharedUserDirectory.getFolderName(this)
                 )
             )
             .setPositiveButton(R.string.grant_permission) { _, _ ->
@@ -132,7 +132,7 @@ class MainActivity : AppCompatActivity(), MainView, OnRefreshListener, ThemeProv
         if (restartPromptShown || !DirectoryInitialization.areDolphinDirectoriesReady())
             return
 
-        val shared = SharedUserDirectory.getPath() ?: return
+        val shared = SharedUserDirectory.getPath(this) ?: return
         if (DirectoryInitialization.getUserDirectory() == shared.absolutePath)
             return
 

@@ -104,7 +104,7 @@ object DirectoryInitialization {
         // files access has been granted. Falls through to the app-private directory otherwise, so
         // a denied permission never leaves the app without a user directory.
         try {
-            val sharedPath = SharedUserDirectory.getPath()
+            val sharedPath = SharedUserDirectory.getPath(context)
             if (sharedPath != null) {
                 if (sharedPath.isDirectory || sharedPath.mkdirs()) {
                     usingLegacyUserDirectory = false

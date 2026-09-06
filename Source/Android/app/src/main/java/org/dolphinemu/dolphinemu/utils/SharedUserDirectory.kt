@@ -5,7 +5,6 @@ package org.dolphinemu.dolphinemu.utils
 import android.content.Context
 import android.os.Environment
 import androidx.preference.PreferenceManager
-import org.dolphinemu.dolphinemu.DolphinApplication
 import java.io.File
 
 /**
@@ -18,6 +17,10 @@ import java.io.File
  * directory is what decides where Dolphin.ini itself lives, so storing them in the config would
  * be circular.
  *
+ * Every entry point takes an explicit Context rather than reaching for DolphinApplication.
+ * The user directory is resolved by DocumentProvider.onCreate, and Android creates content
+ * providers before Application.onCreate runs, so the application singleton isn't set yet.
+ *
  * Requires All files access (MANAGE_EXTERNAL_STORAGE). Without it, this is ignored and the
  * app-private directory is used, so a denied permission can never leave the app with an
  * unusable user directory.
@@ -28,29 +31,33 @@ object SharedUserDirectory {
     private const val KEY_ENABLED = "SharedUserDirectoryEnabled"
     private const val KEY_FOLDER_NAME = "SharedUserDirectoryFolderName"
 
-    private val preferences
-        get() = PreferenceManager.getDefaultSharedPreferences(DolphinApplication.getAppContext())
+    private fun preferences(context: Context) =
+        PreferenceManager.getDefaultSharedPreferences(context.applicationContext)
 
-    var isEnabled: Boolean
-        get() = preferences.getBoolean(KEY_ENABLED, true)
-        set(value) = preferences.edit().putBoolean(KEY_ENABLED, value).apply()
+    fun isEnabled(context: Context): Boolean =
+        preferences(context).getBoolean(KEY_ENABLED, true)
 
-    var folderName: String
-        get() = preferences.getString(KEY_FOLDER_NAME, DEFAULT_FOLDER_NAME) ?: DEFAULT_FOLDER_NAME
-        set(value) = preferences.edit().putString(KEY_FOLDER_NAME, value).apply()
+    fun setEnabled(context: Context, enabled: Boolean) =
+        preferences(context).edit().putBoolean(KEY_ENABLED, enabled).apply()
+
+    fun getFolderName(context: Context): String =
+        preferences(context).getString(KEY_FOLDER_NAME, DEFAULT_FOLDER_NAME) ?: DEFAULT_FOLDER_NAME
+
+    fun setFolderName(context: Context, name: String) =
+        preferences(context).edit().putString(KEY_FOLDER_NAME, name).apply()
 
     /**
      * The shared user directory to use, or null if it isn't configured or isn't usable right now.
      */
-    fun getPath(): File? {
+    fun getPath(context: Context): File? {
         // Nothing here may throw: this runs on the startup path that decides where the user
         // directory lives, and a failure to resolve it must degrade to the app-private folder
         // rather than take the app down.
         return try {
-            if (!isEnabled || !PermissionsHandler.hasAllFilesAccess())
+            if (!isEnabled(context) || !PermissionsHandler.hasAllFilesAccess())
                 return null
 
-            val name = folderName
+            val name = getFolderName(context)
             if (name.isEmpty() || name.contains('/'))
                 return null
 
@@ -67,7 +74,7 @@ object SharedUserDirectory {
      * it possible, which is the case worth prompting about.
      */
     fun isWaitingForPermission(context: Context): Boolean = try {
-        isEnabled && !PermissionsHandler.hasAllFilesAccess()
+        isEnabled(context) && !PermissionsHandler.hasAllFilesAccess()
     } catch (e: Exception) {
         Log.error("[SharedUserDirectory] Could not check permission state: $e")
         false
