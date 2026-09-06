@@ -212,7 +212,7 @@ fun getGitVersion(): String {
     return "0.0"
 }
 
-const val VERSION_CODE_OFFSET = 200
+val VERSION_CODE_OFFSET = 200
 
 fun getBuildVersionCode(): Int {
     try {
