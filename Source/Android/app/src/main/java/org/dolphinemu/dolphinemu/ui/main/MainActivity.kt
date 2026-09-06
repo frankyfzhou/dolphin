@@ -30,7 +30,9 @@ import org.dolphinemu.dolphinemu.ui.platform.PlatformTab
 import org.dolphinemu.dolphinemu.utils.AfterDirectoryInitializationRunner
 import org.dolphinemu.dolphinemu.utils.DirectoryInitialization
 import org.dolphinemu.dolphinemu.utils.InsetsHelper
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import org.dolphinemu.dolphinemu.utils.PermissionsHandler
+import org.dolphinemu.dolphinemu.utils.SharedUserDirectory
 import org.dolphinemu.dolphinemu.utils.StartupHandler
 import org.dolphinemu.dolphinemu.utils.ThemeHelper
 import org.dolphinemu.dolphinemu.utils.WiiUtils
@@ -43,6 +45,10 @@ class MainActivity : AppCompatActivity(), MainView, OnRefreshListener, ThemeProv
     private lateinit var binding: ActivityMainBinding
 
     private lateinit var menu: Menu
+
+    private var allFilesAccessPromptShown = false
+
+    private var restartPromptShown = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen().setKeepOnScreenCondition { !DirectoryInitialization.areDolphinDirectoriesReady() }
@@ -90,10 +96,60 @@ class MainActivity : AppCompatActivity(), MainView, OnRefreshListener, ThemeProv
         }
     }
 
+    /**
+     * Prompts once per launch when a shared user directory is wanted but All files access hasn't
+     * been granted. There is no runtime permission dialog for it, so without this the setting
+     * would silently do nothing.
+     */
+    private fun maybeRequestAllFilesAccess() {
+        if (allFilesAccessPromptShown || !SharedUserDirectory.isWaitingForPermission(this))
+            return
+
+        allFilesAccessPromptShown = true
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.shared_user_directory_permission_title)
+            .setMessage(
+                getString(
+                    R.string.shared_user_directory_permission_message,
+                    SharedUserDirectory.folderName
+                )
+            )
+            .setPositiveButton(R.string.grant_permission) { _, _ ->
+                PermissionsHandler.requestAllFilesAccess(this)
+            }
+            .setNegativeButton(R.string.later, null)
+            .show()
+    }
+
+    /**
+     * The user directory is handed to native code once during startup, so granting the permission
+     * while the app is already running can't move it. Rather than silently ignoring the change,
+     * say what's needed.
+     */
+    private fun maybeAskForRestart() {
+        if (restartPromptShown || !DirectoryInitialization.areDolphinDirectoriesReady())
+            return
+
+        val shared = SharedUserDirectory.getPath() ?: return
+        if (DirectoryInitialization.getUserDirectory() == shared.absolutePath)
+            return
+
+        restartPromptShown = true
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.shared_user_directory_restart_title)
+            .setMessage(R.string.shared_user_directory_restart_message)
+            .setPositiveButton(R.string.ok, null)
+            .show()
+    }
+
     override fun onResume() {
         ThemeHelper.setCorrectTheme(this)
 
         super.onResume()
+        maybeRequestAllFilesAccess()
+        maybeAskForRestart()
         if (DirectoryInitialization.shouldStart(this)) {
             DirectoryInitialization.start(this)
             AfterDirectoryInitializationRunner()

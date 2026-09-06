@@ -100,6 +100,18 @@ object DirectoryInitialization {
             return null
         }
 
+        // A shared folder on the main storage volume takes priority when it's configured and All
+        // files access has been granted. Falls through to the app-private directory otherwise, so
+        // a denied permission never leaves the app without a user directory.
+        val sharedPath = SharedUserDirectory.getPath()
+        if (sharedPath != null) {
+            if (sharedPath.isDirectory || sharedPath.mkdirs()) {
+                usingLegacyUserDirectory = false
+                return sharedPath
+            }
+            Log.error("[DirectoryInitialization] Could not use shared user dir: $sharedPath")
+        }
+
         usingLegacyUserDirectory =
             preferLegacyUserDirectory(context) && PermissionsHandler.hasWriteAccess(context)
 

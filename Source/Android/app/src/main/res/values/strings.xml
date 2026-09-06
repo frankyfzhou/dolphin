@@ -490,6 +490,14 @@
     <string name="ok">OK</string>
     <string name="off">Off</string>
     <string name="cancel">Cancel</string>
+    <string name="later">Later</string>
+    <string name="grant_permission">Grant Permission</string>
+    <string name="shared_user_directory_restart_title">Restart required</string>
+    <string name="shared_user_directory_restart_message">Storage access has been granted. Close and reopen Dolphin to start using the shared user data folder.</string>
+    <string name="shared_user_directory_permission_title">Allow access to storage</string>
+    <string name="shared_user_directory_permission_message">Dolphin is set to keep its user data in the &quot;%1$s&quot; folder on internal storage, so it is visible in a file manager and can be shared with another Dolphin build.
+
+This needs All files access. Without it, user data stays in the app-private folder instead.</string>
     <string name="cancelling">Cancelling…</string>
     <string name="clear">Clear</string>
     <string name="disabled">Disabled</string>

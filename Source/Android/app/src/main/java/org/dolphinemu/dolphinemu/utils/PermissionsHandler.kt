@@ -4,6 +4,10 @@ package org.dolphinemu.dolphinemu.utils
 
 import android.Manifest
 import android.app.Activity
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
@@ -37,6 +41,35 @@ object PermissionsHandler {
         val hasWritePermission =
             ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE)
         return hasWritePermission == PackageManager.PERMISSION_GRANTED
+    }
+
+    /**
+     * Whether the app holds All files access, which is what allows a user directory outside the
+     * app-private folder on modern Android. Forks that target SDK 29 or lower get this implicitly
+     * through legacy external storage; this app targets a modern SDK and cannot.
+     */
+    @JvmStatic
+    fun hasAllFilesAccess(): Boolean {
+        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && Environment.isExternalStorageManager()
+    }
+
+    /**
+     * Sends the user to the system screen where All files access is granted. There is no runtime
+     * prompt for this permission; it can only be toggled in Settings.
+     */
+    @JvmStatic
+    fun requestAllFilesAccess(activity: Activity) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R)
+            return
+
+        val uri = Uri.fromParts("package", activity.packageName, null)
+        val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, uri)
+        try {
+            activity.startActivity(intent)
+        } catch (_: ActivityNotFoundException) {
+            // Not every device exposes the per-app screen; fall back to the global list.
+            activity.startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
+        }
     }
 
     @JvmStatic
