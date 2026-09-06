@@ -106,7 +106,14 @@ android {
             resValue("string", "app_name_suffixed", "Dolphin Debug")
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
-            isJniDebuggable = true
+
+            // These builds are for playing, not for attaching a debugger. A debuggable app makes
+            // ART skip optimizations, run under JIT with debug support and do extra JNI checking,
+            // which is very costly for an emulator: it shows up as slow menus and lost frames even
+            // though the native code is built optimized. Official and MMJR2 builds are release
+            // builds, so leaving this on made for a badly unfair comparison.
+            isDebuggable = false
+            isJniDebuggable = false
         }
     }
 
