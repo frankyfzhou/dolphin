@@ -367,6 +367,15 @@ object NativeLibrary {
     external fun PauseEmulation(overrideAchievementRestrictions: Boolean)
 
     @JvmStatic
+    /**
+     * Temporarily disables the throttler, running emulation unlimited.
+     *
+     * Unlike changing the emulation speed setting, this is read live by the throttler rather than
+     * applied by a CPU-thread config callback, so it engages even when the CPU thread is stalled
+     * (for example while a blocking panic alert is on screen).
+     */
+    external fun SetThrottlerTempDisabled(disable: Boolean)
+
     external fun StopEmulation()
 
   /**

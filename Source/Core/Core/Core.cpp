@@ -99,7 +99,7 @@ static bool s_wants_determinism;
 static std::thread s_emu_thread;
 static Common::HookableEvent<Core::State> s_state_changed_event;
 
-static bool s_is_throttler_temp_disabled = false;
+static std::atomic<bool> s_is_throttler_temp_disabled = false;
 static bool s_frame_step = false;
 static std::atomic<bool> s_stop_frame_step;
 

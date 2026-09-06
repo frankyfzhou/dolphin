@@ -251,6 +251,15 @@ JNIEXPORT void JNICALL Java_org_dolphinemu_dolphinemu_NativeLibrary_PauseEmulati
                  override_achievement_restrictions);
 }
 
+JNIEXPORT void JNICALL
+Java_org_dolphinemu_dolphinemu_NativeLibrary_SetThrottlerTempDisabled(JNIEnv*, jclass,
+                                                                     jboolean disable)
+{
+  // Read live by CoreTimingManager::IsSpeedUnlimited, so unlike Config::MAIN_EMULATION_SPEED this
+  // takes effect without waiting for the CPU thread to run a config-changed callback.
+  Core::SetIsThrottlerTempDisabled(disable != JNI_FALSE);
+}
+
 JNIEXPORT void JNICALL Java_org_dolphinemu_dolphinemu_NativeLibrary_StopEmulation(JNIEnv*, jclass)
 {
   Core::Stop(Core::System::GetInstance());
