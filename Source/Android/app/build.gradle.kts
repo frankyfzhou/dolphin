@@ -212,6 +212,8 @@ fun getGitVersion(): String {
     return "0.0"
 }
 
+const val VERSION_CODE_OFFSET = 200
+
 fun getBuildVersionCode(): Int {
     try {
         val commitCount = Integer.valueOf(
@@ -230,7 +232,10 @@ fun getBuildVersionCode(): Int {
             .start()
             .waitFor() == 0
 
-        return commitCount * 2 + (if (isRelease) 0 else 1)
+        // This fork's A/B test builds were made on branches with padded commit counts, which
+        // pushed their version codes above the real branch's. Offset ours clear of them so every
+        // build installs over whatever came before instead of being refused as a downgrade.
+        return commitCount * 2 + (if (isRelease) 0 else 1) + VERSION_CODE_OFFSET
     } catch (e: Exception) {
         logger.error("Cannot find git, defaulting to dummy version code")
     }
